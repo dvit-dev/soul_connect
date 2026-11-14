@@ -48,7 +48,22 @@ import {
   handleOmniwareCallback,
   handleOmniwareWebhook,
 } from "../controllers/paymentController";
-import { handleForgotPassword, handleResetPassword } from "../controllers/authController";
+import {
+  handleForgotPassword,
+  handleResetPassword,
+  handleForgotKCPassword,
+  handleResetKCPassword,
+  handleKeycloakLogin,
+  handleVerifyResetToken,
+  handleUpdatePassword,
+  handleRefreshToken,
+  handleLogout,
+  handleGetSession,
+  handleGetUserInfo,
+  handleGetUserSessions,
+  handleRevokeUserSessions,
+} from "../controllers/authController";
+import authRoutes from "./authRoutes";
 import {
   handleMediaUpload,
   mediaUploadMiddleware,
@@ -230,11 +245,53 @@ router.post("/verification/verify-otp", keycloak.protect(), handleVerifyOTP);
 router.post("/public/verification/send-otp", handleSendOTP);
 router.post("/public/verification/verify-otp", handleVerifyOTP);
 
-// --- FORGOT & RESET PASSWORD ROUTES ---
+// --- AUTHENTICATION & KEYCLOAK ROUTES ---
+// Dedicated Auth Router mounted at /api/auth/*
+router.use("/auth", authRoutes);
+
+// Direct Keycloak Login Routes
+router.post("/login", handleKeycloakLogin);
+router.post("/public/login", handleKeycloakLogin);
+
+// Token Refresh Routes
+router.post("/refresh-token", handleRefreshToken);
+router.post("/public/refresh-token", handleRefreshToken);
+router.post("/refresh", handleRefreshToken);
+router.post("/public/refresh", handleRefreshToken);
+
+// Logout & Session Invalidation Routes
+router.post("/logout", handleLogout);
+router.post("/public/logout", handleLogout);
+
+// Session Verification & User Info Routes
+router.get("/session", handleGetSession);
+router.post("/session", handleGetSession);
+router.get("/public/session", handleGetSession);
+router.get("/userinfo", handleGetUserInfo);
+router.get("/sessions", handleGetUserSessions);
+router.post("/sessions/revoke", handleRevokeUserSessions);
+
+// --- FORGOT, VERIFY & RESET PASSWORD ROUTES (ORIGINAL UNTOUCHED) ---
 router.post("/public/forgot-password", handleForgotPassword);
 router.post("/forgot-password", handleForgotPassword);
 router.post("/public/reset-password", handleResetPassword);
 router.post("/reset-password", handleResetPassword);
+
+// --- KEYCLOAK FORGOT & RESET PASSWORD ROUTES (SEPARATE NEW APIS) ---
+router.post("/public/forgot-kc-password", handleForgotKCPassword);
+router.post("/forgot-kc-password", handleForgotKCPassword);
+router.post("/public/reset-kc-password", handleResetKCPassword);
+router.post("/reset-kc-password", handleResetKCPassword);
+router.get("/verify-reset-token", handleVerifyResetToken);
+router.post("/verify-reset-token", handleVerifyResetToken);
+router.get("/public/verify-reset-token", handleVerifyResetToken);
+router.post("/public/verify-reset-token", handleVerifyResetToken);
+
+// --- UPDATE & CHANGE PASSWORD ROUTES ---
+router.post("/update-password", handleUpdatePassword);
+router.post("/public/update-password", handleUpdatePassword);
+router.post("/change-password", handleUpdatePassword);
+router.post("/public/change-password", handleUpdatePassword);
 
 // --- MEDIA UPLOAD ROUTES ---
 router.post("/media-upload", mediaUploadMiddleware, handleMediaUpload);
