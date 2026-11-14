@@ -1,0 +1,412 @@
+================================================================================
+SOUL CONNECT BACKEND - AUTHENTICATION & KEYCLOAK CURL APIS LIST
+================================================================================
+Base URLs:
+  - Production:  https://api.soulconect.com
+
+================================================================================
+1. KEYCLOAK LOGIN API
+================================================================================
+
+# 1.1 Direct Keycloak Login (Username / Email & Password)
+# Supports both username or email in the "username" field.
+curl -X POST "https://api.soulconect.com/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "user@example.com",
+    "password": "Password@123",
+    "scope": "openid profile email offline_access"
+  }'
+
+# Alias route:
+curl -X POST "https://api.soulconect.com/api/login" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "user@example.com",
+    "password": "Password@123"
+  }'
+
+# Sample Response (200 OK):
+# {
+#   "success": true,
+#   "message": "Login successful",
+#   "data": {
+#     "tokens": {
+#       "access_token": "eyJhbGciOi...",
+#       "expires_in": 300,
+#       "refresh_expires_in": 1800,
+#       "refresh_token": "eyJhbGciOi...",
+#       "token_type": "Bearer",
+#       "id_token": "eyJhbGciOi...",
+#       "session_state": "4a7f0581-..."
+#     },
+#     "user": {
+#       "keycloakId": "c8a149bc-43d2-43bb-a299-...",
+#       "username": "user@example.com",
+#       "email": "user@example.com",
+#       "firstName": "John",
+#       "lastName": "Doe",
+#       "roles": ["customer"],
+#       "primaryRole": "customer",
+#       "customerId": "uid_1947b19280",
+#       "customer": { ... }
+#     }
+#   }
+# }
+
+
+================================================================================
+2. FORGOT PASSWORD APIS
+================================================================================
+
+# 2.1 Keycloak Forgot Password API (New Dedicated Handler: handleForgotKCPassword)
+curl -X POST "https://api.soulconect.com/api/auth/forgot-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "sendNativeKeycloakEmail": false
+  }'
+
+# Alias routes:
+curl -X POST "https://api.soulconect.com/api/auth/forgot-kc-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
+
+curl -X POST "https://api.soulconect.com/api/public/forgot-kc-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
+
+# 2.2 Original Forgot Password API (Original Untouched Handler: handleForgotPassword)
+curl -X POST "https://api.soulconect.com/api/public/forgot-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com"
+  }'
+
+# Sample Response (200 OK):
+# {
+#   "success": true,
+#   "message": "Password reset instructions have been sent to user@example.com. Please check your inbox.",
+#   "email": "user@example.com",
+#   "resetUrl": "https://soulconect.com/reset_password?token=..."
+# }
+
+
+================================================================================
+3. VERIFY RESET TOKEN API
+================================================================================
+
+# 3.1 Verify Token Validity via POST Body (Before user types new password)
+curl -X POST "https://api.soulconect.com/api/auth/verify-reset-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "eyJhbGciOi..."
+  }'
+
+# 3.2 Verify Token Validity via GET Query Parameter
+curl -X GET "https://api.soulconect.com/api/auth/verify-reset-token?token=eyJhbGciOi..." \
+  -H "Content-Type: application/json"
+
+# Sample Response (200 OK):
+# {
+#   "success": true,
+#   "valid": true,
+#   "message": "Reset token is valid.",
+#   "email": "user@example.com",
+#   "userId": "c8a149bc-43d2-43bb-a299-..."
+# }
+
+# Sample Response on Expired / Tampered Token (400 Bad Request):
+# {
+#   "success": false,
+#   "valid": false,
+#   "message": "Reset link has expired. Please request a new password reset."
+# }
+
+
+================================================================================
+4. RESET PASSWORD APIS (Token-based from email)
+================================================================================
+
+# 4.1 Keycloak Reset Password API (New Dedicated Handler: handleResetKCPassword)
+curl -X POST "https://api.soulconect.com/api/auth/reset-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "YOUR_SIGNED_RESET_TOKEN_HERE",
+    "newPassword": "NewSecurePassword@123"
+  }'
+
+# Alias routes:
+curl -X POST "https://api.soulconect.com/api/auth/reset-kc-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "YOUR_SIGNED_RESET_TOKEN_HERE",
+    "newPassword": "NewSecurePassword@123"
+  }'
+
+curl -X POST "https://api.soulconect.com/api/public/reset-kc-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "YOUR_SIGNED_RESET_TOKEN_HERE",
+    "newPassword": "NewSecurePassword@123"
+  }'
+
+# 4.2 Original Reset Password API (Original Untouched Handler: handleResetPassword)
+curl -X POST "https://api.soulconect.com/api/public/reset-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "token": "YOUR_SIGNED_RESET_TOKEN_HERE",
+    "newPassword": "NewSecurePassword@123"
+  }'
+
+# Sample Response (200 OK):
+# {
+#   "success": true,
+#   "message": "Password has been reset successfully! You can now sign in with your new password."
+# }
+
+
+================================================================================
+5. UPDATE / CHANGE PASSWORD API
+================================================================================
+
+# 5.1 Authenticated User Change Password (Verifying Current Password)
+curl -X POST "https://api.soulconect.com/api/auth/update-password" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "currentPassword": "OldPassword@123",
+    "newPassword": "NewSecurePassword@123",
+    "logoutOtherSessions": true
+  }'
+
+# 5.2 Direct Password Change with Username/Email & Current Password
+curl -X POST "https://api.soulconect.com/api/auth/update-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "user@example.com",
+    "currentPassword": "OldPassword@123",
+    "newPassword": "NewSecurePassword@123",
+    "logoutOtherSessions": false
+  }'
+
+# 5.3 Admin / Service Update Password by Keycloak User ID
+curl -X POST "https://api.soulconect.com/api/auth/update-password" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "keycloakId": "c8a149bc-43d2-43bb-a299-...",
+    "newPassword": "NewPassword@123",
+    "temporary": false
+  }'
+
+# Alias route:
+curl -X POST "https://api.soulconect.com/api/update-password" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "currentPassword": "OldPassword@123",
+    "newPassword": "NewPassword@123"
+  }'
+
+# Sample Response (200 OK):
+# {
+#   "success": true,
+#   "message": "Password updated successfully! You can now sign in with your new password."
+# }
+
+# Sample Response on Wrong Current Password (400 Bad Request):
+# {
+#   "success": false,
+#   "message": "Current password is incorrect. Please verify and try again."
+# }
+
+
+================================================================================
+6. LOGIN SESSION WITH REFRESH TOKEN RELATED APIS
+================================================================================
+
+# 6.1 Refresh Access Token API
+# Exchanges an existing refresh token for fresh access_token & refresh_token.
+curl -X POST "https://api.soulconect.com/api/auth/refresh-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "YOUR_REFRESH_TOKEN_HERE"
+  }'
+
+# Alias routes:
+curl -X POST "https://api.soulconect.com/api/refresh-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "YOUR_REFRESH_TOKEN_HERE"
+  }'
+
+curl -X POST "https://api.soulconect.com/api/auth/refresh" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "YOUR_REFRESH_TOKEN_HERE"
+  }'
+
+# Sample Response (200 OK):
+# {
+#   "success": true,
+#   "message": "Token refreshed successfully",
+#   "tokens": {
+#     "access_token": "eyJhbGciOi...",
+#     "expires_in": 300,
+#     "refresh_expires_in": 1800,
+#     "refresh_token": "eyJhbGciOi...",
+#     "token_type": "Bearer",
+#     "id_token": "eyJhbGciOi...",
+#     "session_state": "4a7f0581-..."
+#   }
+# }
+
+# Sample Response on Expired Refresh Token (401 Unauthorized):
+# {
+#   "success": false,
+#   "error": "invalid_grant",
+#   "message": "Session expired or invalid refresh token. Please sign in again."
+# }
+
+
+# 6.2 Logout & Invalidate Session API
+# Revokes Keycloak refresh token, closes session, and destroys Express session store.
+curl -X POST "https://api.soulconect.com/api/auth/logout" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "YOUR_REFRESH_TOKEN_HERE",
+    "keycloakId": "c8a149bc-43d2-43bb-a299-...",
+    "allSessions": true
+  }'
+
+# Alias route:
+curl -X POST "https://api.soulconect.com/api/logout" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refreshToken": "YOUR_REFRESH_TOKEN_HERE"
+  }'
+
+# Sample Response (200 OK):
+# {
+#   "success": true,
+#   "message": "Logged out successfully. Login session has been invalidated.",
+#   "details": {
+#     "oidcRevoked": true,
+#     "adminSessionsRevoked": true
+#   }
+# }
+
+
+# 6.3 Check Session Status & User Info API
+# Inspects Bearer token validity, expiration time, roles, and MongoDB customer profile.
+curl -X GET "https://api.soulconect.com/api/auth/session" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE" \
+  -H "Content-Type: application/json"
+
+# Also supports POST with JSON body accessToken:
+curl -X POST "https://api.soulconect.com/api/auth/session" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "accessToken": "YOUR_ACCESS_TOKEN_HERE"
+  }'
+
+# Alias routes:
+curl -X GET "https://api.soulconect.com/api/session" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE"
+
+curl -X GET "https://api.soulconect.com/api/auth/me" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE"
+
+# Sample Response (200 OK):
+# {
+#   "success": true,
+#   "active": true,
+#   "session": {
+#     "expiresAt": 1773738000,
+#     "expiresInSeconds": 284,
+#     "issuedAt": 1773737700,
+#     "sessionState": "4a7f0581-..."
+#   },
+#   "user": {
+#     "keycloakId": "c8a149bc-43d2-43bb-a299-...",
+#     "username": "user@example.com",
+#     "email": "user@example.com",
+#     "name": "John Doe",
+#     "firstName": "John",
+#     "lastName": "Doe",
+#     "roles": ["customer"],
+#     "primaryRole": "customer",
+#     "customerId": "uid_1947b19280"
+#   },
+#   "customer": { ... }
+# }
+
+# Sample Response on Expired Token (401 Unauthorized):
+# {
+#   "success": false,
+#   "active": false,
+#   "message": "Session token has expired. Please refresh your session.",
+#   "expiredAt": 1773738000
+# }
+
+
+# 6.4 Keycloak OpenID Connect UserInfo Proxy API
+curl -X GET "https://api.soulconect.com/api/auth/userinfo" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE"
+
+# Sample Response (200 OK):
+# {
+#   "success": true,
+#   "data": {
+#     "sub": "c8a149bc-43d2-43bb-a299-...",
+#     "email_verified": true,
+#     "name": "John Doe",
+#     "preferred_username": "user@example.com",
+#     "given_name": "John",
+#     "family_name": "Doe",
+#     "email": "user@example.com"
+#   }
+# }
+
+
+# 6.5 List Active User Sessions in Keycloak
+curl -X GET "https://api.soulconect.com/api/auth/sessions?keycloakId=c8a149bc-43d2-43bb-a299-..." \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE"
+
+# Sample Response (200 OK):
+# {
+#   "success": true,
+#   "keycloakId": "c8a149bc-43d2-43bb-a299-...",
+#   "sessionCount": 2,
+#   "sessions": [
+#     {
+#       "id": "4a7f0581-...",
+#       "username": "user@example.com",
+#       "userId": "c8a149bc-...",
+#       "ipAddress": "192.168.1.10",
+#       "start": 1773737700000,
+#       "lastAccess": 1773737800000,
+#       "clients": { "soul_connect_backend": "soul_connect_backend" }
+#     }
+#   ]
+# }
+
+
+# 6.6 Revoke All User Sessions in Keycloak
+curl -X POST "https://api.soulconect.com/api/auth/sessions/revoke" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN_HERE" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "keycloakId": "c8a149bc-43d2-43bb-a299-..."
+  }'
+
+# Sample Response (200 OK):
+# {
+#   "success": true,
+#   "message": "All sessions revoked for Keycloak User ID: c8a149bc-43d2-43bb-a299-..."
+# }
