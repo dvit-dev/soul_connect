@@ -5,77 +5,65 @@ on:
     branches: [main]
   workflow_dispatch: {}
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, soulconnect]
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 2
 
-      - name: Deploy backend & frontend over SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          port: ${{ secrets.DEPLOY_PORT }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            set -e
-            cd /root/soul_connect
-            git fetch origin main
-            git reset --hard origin/main
-            docker build -t soulconnect-backend:latest ./SoulConnect_BACK_END
-            docker stop soulconnect-backend || true
-            docker rm soulconnect-backend || true
-            docker run -d \
-              --name soulconnect-backend \
-              --restart unless-stopped \
-              --env-file ./SoulConnect_BACK_END/.env \
-              -p 3000:3000 \
-              -v soulconnect-backend-uploads:/app/uploads \
-              --add-host=host.docker.internal:host-gateway \
-              soulconnect-backend:latest
-            docker build -t soulconnect-frontend:latest ./SoulConnect_FRONT_END_Next
-            docker stop soulconnect-frontend || true
-            docker rm soulconnect-frontend || true
-            docker run -d \
-              --name soulconnect-frontend \
-              --restart unless-stopped \
-              -p 8080:80 \
-              soulconnect-frontend:latest
-            docker image prune -f
+      - name: Deploy backend & frontend
+        run: |
+          set -e
+          cd /opt/soul_connect
+          git fetch origin main
+          git reset --hard origin/main
+
+          docker build -t soulconnect-backend:latest ./SoulConnect_BACK_END
+          docker stop soulconnect-backend || true
+          docker rm soulconnect-backend || true
+          docker run -d \
+            --name soulconnect-backend \
+            --restart unless-stopped \
+            --env-file ./SoulConnect_BACK_END/.env \
+            -p 3000:3000 \
+            -v soulconnect-backend-uploads:/app/uploads \
+            --add-host=host.docker.internal:host-gateway \
+            soulconnect-backend:latest
+
+          docker build -t soulconnect-frontend:latest ./SoulConnect_FRONT_END_Next
+          docker stop soulconnect-frontend || true
+          docker rm soulconnect-frontend || true
+          docker run -d \
+            --name soulconnect-frontend \
+            --restart unless-stopped \
+            -p 8080:80 \
+            soulconnect-frontend:latest
+
+          docker image prune -f
 
       - name: Check if soul_theme changed
         id: theme_check
         run: |
-          if git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -q '^soul_theme/'; then
+          if git diff --name-only HEAD~1 HEAD | grep -q '^soul_theme/'; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
           else
             echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Copy Keycloak theme to server
+      - name: Copy Keycloak theme
         if: steps.theme_check.outputs.changed == 'true'
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          port: ${{ secrets.DEPLOY_PORT }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "soul_theme/login/*"
-          target: "/opt/keycloak/themes/soul_theme/login"
-          strip_components: 2
-          overwrite: true
+        run: |
+          mkdir -p /opt/keycloak/themes/soul_theme/login
+          cp -r soul_theme/login/* /opt/keycloak/themes/soul_theme/login/
 
       - name: Restart Keycloak (theme picked up)
         if: steps.theme_check.outputs.changed == 'true'
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          port: ${{ secrets.DEPLOY_PORT }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            systemctl restart keycloak || docker restart keycloak || true
+        run: |
+          sudo -n systemctl restart keycloak || docker restart keycloak || true
