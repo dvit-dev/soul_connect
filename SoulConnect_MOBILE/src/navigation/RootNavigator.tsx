@@ -5,7 +5,9 @@ import {AboutScreen} from '../screens/AboutScreen';
 import {ContactScreen} from '../screens/ContactScreen';
 import {HomeScreen} from '../screens/HomeScreen';
 import {LegalScreen} from '../screens/LegalScreen';
+import {ForgotPasswordScreen} from '../screens/ForgotPasswordScreen';
 import {LoginScreen} from '../screens/LoginScreen';
+import {ResetPasswordScreen} from '../screens/ResetPasswordScreen';
 import {PaymentScreen} from '../screens/PaymentScreen';
 import {RegisterScreen} from '../screens/RegisterScreen';
 import {CustomerTabs} from '../screens/portal/CustomerTabs';
@@ -34,6 +36,8 @@ export function RootNavigator() {
       <Stack.Screen name="Home" component={HomeScreen} options={{headerShown: false}} />
       <Stack.Screen name="Register" component={RegisterScreen} options={{title: 'Register'}} />
       <Stack.Screen name="Login" component={LoginScreen} options={{headerShown: false, title: 'Sign in'}} />
+      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{headerShown: false}} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} options={{headerShown: false}} />
       <Stack.Screen name="About" component={AboutScreen} options={{title: 'About'}} />
       <Stack.Screen name="Contact" component={ContactScreen} options={{title: 'Contact'}} />
       <Stack.Screen

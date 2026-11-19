@@ -2,6 +2,8 @@ export type RootStackParamList = {
   Home: undefined;
   Register: undefined;
   Login: undefined;
+  ForgotPassword: {email?: string} | undefined;
+  ResetPassword: {token?: string; email?: string} | undefined;
   About: undefined;
   Contact: undefined;
   Legal: {kind: 'privacy' | 'terms'};

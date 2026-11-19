@@ -27,6 +27,23 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
+        <!-- Password reset links from email: https://soulconect.com/reset_password?token=... -->
+        <intent-filter android:autoVerify="true">
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+            <data android:host="soulconect.com" />
+            <data android:host="www.soulconect.com" />
+            <data android:path="/reset_password" />
+            <data android:path="/reset_password/" />
+        </intent-filter>
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="soulconnect" />
+        </intent-filter>
       </activity>
       <service
         android:name="com.google.android.gms.metadata.ModuleDependencies"

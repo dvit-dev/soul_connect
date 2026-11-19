@@ -3,6 +3,7 @@ import {Image, StatusBar, StyleSheet, View} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {SafeAreaProvider, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {AuthProvider, useAuth} from './src/context/AuthContext';
+import {linking} from './src/navigation/linking';
 import {RootNavigator} from './src/navigation/RootNavigator';
 import {colors} from './src/theme/colors';
 
@@ -28,7 +29,7 @@ function Gate({splashDone}: {splashDone: boolean}) {
     );
   }
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <RootNavigator />
     </NavigationContainer>
   );

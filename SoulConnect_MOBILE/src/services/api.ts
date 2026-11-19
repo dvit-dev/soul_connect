@@ -254,9 +254,37 @@ export async function loginWithPassword(username: string, password: string) {
   return data as {access_token: string; refresh_token: string; id_token?: string};
 }
 
-export function forgotPasswordUrl(): string {
-  const params = new URLSearchParams({client_id: KEYCLOAK_CLIENT_ID});
-  return `${keycloakBase.replace('/protocol/openid-connect', '')}/login-actions/reset-credentials?${params.toString()}`;
+/** Emails a password-reset link to the user. */
+export async function requestPasswordReset(email: string): Promise<{ok: boolean; message: string}> {
+  const result = await request<{success?: boolean; message?: string}>('/api/public/forgot-password', {
+    method: 'POST',
+    body: {email},
+  });
+  // Only the message is used — never anything else from this response.
+  const ok = result.ok && result.data?.success !== false;
+  if (result.status === 0) {
+    return {ok: false, message: 'Network error. Check your connection and try again.'};
+  }
+  return {
+    ok,
+    message: result.data?.message || (ok ? 'Reset link sent.' : result.error || 'Could not send the reset email.'),
+  };
+}
+
+/** Sets a new password using the token from the reset email. */
+export async function resetPassword(token: string, newPassword: string): Promise<{ok: boolean; message: string}> {
+  const result = await request<{success?: boolean; message?: string}>('/api/public/reset-password', {
+    method: 'POST',
+    body: {token, newPassword},
+  });
+  if (result.status === 0) {
+    return {ok: false, message: 'Network error. Check your connection and try again.'};
+  }
+  const ok = result.ok && result.data?.success !== false;
+  return {
+    ok,
+    message: result.data?.message || (ok ? 'Password updated.' : result.error || 'Could not reset the password.'),
+  };
 }
 
 export async function refreshAuthToken(refreshToken: string) {
