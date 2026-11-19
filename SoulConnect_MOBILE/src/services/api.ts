@@ -1,4 +1,4 @@
-import {API_URL, KEYCLOAK_CLIENT_ID, keycloakBase} from '../config/env';
+import {API_URL} from '../config/env';
 
 export interface ApiResult<T = any> {
   ok: boolean;
@@ -202,119 +202,103 @@ export async function fetchPaymentAccounts(token: string, body: Record<string, u
   return request('/api/payment_account_list', {method: 'POST', token, body});
 }
 
-export async function exchangeAuthCode(code: string, verifier: string, redirectUri: string) {
-  const body = new URLSearchParams({
-    grant_type: 'authorization_code',
-    client_id: KEYCLOAK_CLIENT_ID,
-    code,
-    redirect_uri: redirectUri,
-    code_verifier: verifier,
-  });
-  const response = await fetch(`${keycloakBase}/token`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: body.toString(),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error_description || data.error || 'Sign-in failed');
-  }
-  return data as {access_token: string; refresh_token: string; id_token?: string};
+// ---------------------------------------------------------------------------
+// Auth (Soul Connect backend /api/auth/*)
+// ---------------------------------------------------------------------------
+
+export interface AuthTokens {
+  access_token: string;
+  refresh_token: string;
+  id_token?: string;
+  expires_in?: number;
+  refresh_expires_in?: number;
 }
 
-export async function loginWithPassword(username: string, password: string) {
-  const body = new URLSearchParams({
-    grant_type: 'password',
-    client_id: KEYCLOAK_CLIENT_ID,
-    username,
-    password,
-    scope: 'openid profile email',
-  });
-  let response: Response;
-  try {
-    response = await fetch(`${keycloakBase}/token`, {
-      method: 'POST',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-      body: body.toString(),
-    });
-  } catch {
-    throw new Error('Network error. Check your connection and try again.');
-  }
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    if (data.error === 'invalid_grant') {
-      const desc = String(data.error_description || '');
-      if (/not fully set up|disabled|verify/i.test(desc)) {
-        throw new Error('Your account is not active yet. Please contact support.');
-      }
-      throw new Error('Incorrect email or password.');
-    }
-    throw new Error(data.error_description || data.error || 'Sign-in failed');
-  }
-  return data as {access_token: string; refresh_token: string; id_token?: string};
-}
+const NETWORK_ERROR = 'Network error. Check your connection and try again.';
 
-/** Emails a password-reset link to the user. */
-export async function requestPasswordReset(email: string): Promise<{ok: boolean; message: string}> {
-  const result = await request<{success?: boolean; message?: string}>('/api/public/forgot-password', {
-    method: 'POST',
-    body: {email},
-  });
-  // Only the message is used — never anything else from this response.
-  const ok = result.ok && result.data?.success !== false;
+/** Picks the backend's human-readable message, falling back to `fallback`. */
+function messageOf(result: ApiResult<any>, fallback: string): string {
   if (result.status === 0) {
-    return {ok: false, message: 'Network error. Check your connection and try again.'};
+    return NETWORK_ERROR;
   }
+  const msg = result.data?.message;
+  return typeof msg === 'string' && msg.trim() ? msg : fallback;
+}
+
+/** POST /api/auth/login — email or username + password. */
+export async function loginWithPassword(username: string, password: string): Promise<AuthTokens> {
+  const result = await request<any>('/api/auth/login', {
+    method: 'POST',
+    body: {username, password, scope: 'openid profile email'},
+  });
+  const tokens = result.data?.data?.tokens as AuthTokens | undefined;
+  if (!result.ok || result.data?.success === false || !tokens?.access_token) {
+    throw new Error(messageOf(result, 'Sign-in failed. Please try again.'));
+  }
+  return tokens;
+}
+
+/** POST /api/auth/refresh-token — exchanges a refresh token for new tokens. */
+export async function refreshAuthToken(refreshToken: string): Promise<AuthTokens> {
+  const result = await request<any>('/api/auth/refresh-token', {
+    method: 'POST',
+    body: {refreshToken},
+  });
+  const tokens = (result.data?.tokens || result.data?.data?.tokens) as AuthTokens | undefined;
+  if (!result.ok || result.data?.success === false || !tokens?.access_token) {
+    throw new Error(messageOf(result, 'Session expired. Please sign in again.'));
+  }
+  return tokens;
+}
+
+/** POST /api/auth/logout — revokes this device's session on the server. */
+export async function logoutSession(accessToken: string | null, refreshToken: string | null): Promise<boolean> {
+  const result = await request<any>('/api/auth/logout', {
+    method: 'POST',
+    token: accessToken,
+    body: refreshToken ? {refreshToken} : {},
+  });
+  return result.ok && result.data?.success !== false;
+}
+
+/** POST /api/auth/forgot-password — emails a reset link. */
+export async function requestPasswordReset(email: string): Promise<{ok: boolean; message: string}> {
+  const result = await request<any>('/api/auth/forgot-password', {
+    method: 'POST',
+    body: {email, sendNativeKeycloakEmail: false},
+  });
+  // Only `success` and `message` are read from this response, nothing else.
+  const ok = result.ok && result.data?.success !== false;
+  return {ok, message: messageOf(result, ok ? 'Reset link sent.' : 'Could not send the reset email.')};
+}
+
+/** POST /api/auth/verify-reset-token — checks a reset token before showing the form. */
+export async function verifyResetToken(
+  token: string,
+): Promise<{valid: boolean; email?: string; message: string; network?: boolean}> {
+  const result = await request<any>('/api/auth/verify-reset-token', {
+    method: 'POST',
+    body: {token},
+  });
+  if (result.status === 0) {
+    return {valid: false, network: true, message: NETWORK_ERROR};
+  }
+  const valid = result.ok && result.data?.valid === true;
   return {
-    ok,
-    message: result.data?.message || (ok ? 'Reset link sent.' : result.error || 'Could not send the reset email.'),
+    valid,
+    email: result.data?.email,
+    message: messageOf(result, valid ? 'Reset token is valid.' : 'This reset link is invalid or has expired.'),
   };
 }
 
-/** Sets a new password using the token from the reset email. */
+/** POST /api/auth/reset-password — sets a new password using the emailed token. */
 export async function resetPassword(token: string, newPassword: string): Promise<{ok: boolean; message: string}> {
-  const result = await request<{success?: boolean; message?: string}>('/api/public/reset-password', {
+  const result = await request<any>('/api/auth/reset-password', {
     method: 'POST',
     body: {token, newPassword},
   });
-  if (result.status === 0) {
-    return {ok: false, message: 'Network error. Check your connection and try again.'};
-  }
   const ok = result.ok && result.data?.success !== false;
-  return {
-    ok,
-    message: result.data?.message || (ok ? 'Password updated.' : result.error || 'Could not reset the password.'),
-  };
-}
-
-export async function refreshAuthToken(refreshToken: string) {
-  const body = new URLSearchParams({
-    grant_type: 'refresh_token',
-    client_id: KEYCLOAK_CLIENT_ID,
-    refresh_token: refreshToken,
-  });
-  const response = await fetch(`${keycloakBase}/token`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-    body: body.toString(),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(data.error_description || 'Session expired');
-  }
-  return data as {access_token: string; refresh_token?: string; id_token?: string};
-}
-
-export function buildAuthorizeUrl(challenge: string, redirectUri: string): string {
-  const params = new URLSearchParams({
-    client_id: KEYCLOAK_CLIENT_ID,
-    redirect_uri: redirectUri,
-    response_type: 'code',
-    scope: 'openid profile email',
-    code_challenge: challenge,
-    code_challenge_method: 'S256',
-  });
-  return `${keycloakBase}/auth?${params.toString()}`;
+  return {ok, message: messageOf(result, ok ? 'Password updated.' : 'Could not reset the password.')};
 }
 
 export function approvalStatus(item: any): string {

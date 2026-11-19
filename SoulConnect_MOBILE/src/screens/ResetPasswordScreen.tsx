@@ -1,10 +1,10 @@
-import React, {useRef, useState} from 'react';
-import {StyleSheet, Text, TextInput, View} from 'react-native';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
+import {ActivityIndicator, StyleSheet, Text, TextInput, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {CheckCircle2} from 'lucide-react-native';
 import {AuthAlert, AuthButton, AuthField, AuthLink, AuthScreen, authStyles} from '../components/auth/AuthUI';
 import {RootStackParamList} from '../navigation/types';
-import {resetPassword} from '../services/api';
+import {resetPassword, verifyResetToken} from '../services/api';
 import {colors, radii} from '../theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ResetPassword'>;
@@ -35,7 +35,10 @@ const STRENGTH_COLORS = [colors.borderSoft, colors.danger, colors.amber, colors.
 
 export function ResetPasswordScreen({navigation, route}: Props) {
   const token = route.params?.token || '';
-  const email = route.params?.email || '';
+  const [email, setEmail] = useState(route.params?.email || '');
+  const [check, setCheck] = useState<{state: 'checking' | 'valid' | 'invalid' | 'offline'; message?: string}>(
+    token ? {state: 'checking'} : {state: 'invalid', message: 'This reset link is missing or incomplete.'},
+  );
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [errors, setErrors] = useState<{password?: string; confirm?: string}>({});
@@ -47,6 +50,28 @@ export function ResetPasswordScreen({navigation, route}: Props) {
 
   const goToLogin = () => navigation.reset({index: 0, routes: [{name: 'Home'}, {name: 'Login'}]});
   const requestNewLink = () => navigation.replace('ForgotPassword', {email});
+
+  const runCheck = useCallback(async () => {
+    if (!token) {
+      return;
+    }
+    setCheck({state: 'checking'});
+    const result = await verifyResetToken(token);
+    if (result.network) {
+      setCheck({state: 'offline', message: result.message});
+    } else if (result.valid) {
+      if (result.email) {
+        setEmail(result.email);
+      }
+      setCheck({state: 'valid'});
+    } else {
+      setCheck({state: 'invalid', message: result.message});
+    }
+  }, [token]);
+
+  useEffect(() => {
+    runCheck();
+  }, [runCheck]);
 
   const onSubmit = async () => {
     const next: {password?: string; confirm?: string} = {};
@@ -73,11 +98,27 @@ export function ResetPasswordScreen({navigation, route}: Props) {
     setDone(true);
   };
 
-  if (!token) {
+  if (check.state === 'checking') {
+    return (
+      <AuthScreen title="Checking your link" subtitle="One moment…" onBack={goToLogin} backLabel="Sign in">
+        <ActivityIndicator color={colors.plum} size="large" style={styles.spinner} />
+      </AuthScreen>
+    );
+  }
+
+  if (check.state === 'offline') {
+    return (
+      <AuthScreen title="You're offline" subtitle={check.message} onBack={goToLogin} backLabel="Sign in">
+        <AuthButton label="Try again" onPress={runCheck} />
+      </AuthScreen>
+    );
+  }
+
+  if (check.state === 'invalid') {
     return (
       <AuthScreen
         title="Link not valid"
-        subtitle="This reset link is missing or incomplete. Request a new one and open it from your email."
+        subtitle={`${check.message || 'This reset link is invalid or has expired.'} Request a new one and open it from your email.`}
         onBack={goToLogin}
         backLabel="Sign in">
         <AuthButton label="Request a new link" onPress={requestNewLink} />
@@ -164,6 +205,7 @@ export function ResetPasswordScreen({navigation, route}: Props) {
 
 const styles = StyleSheet.create({
   iconWrap: {alignItems: 'center', marginBottom: 12},
+  spinner: {marginVertical: 12},
   doneText: {color: colors.ink60, fontSize: 15, lineHeight: 22, textAlign: 'center'},
   meterRow: {flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 6},
   meterBar: {flex: 1, height: 4, borderRadius: radii.pill},

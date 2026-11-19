@@ -1,13 +1,16 @@
 import React, {useEffect, useState} from 'react';
 import {Image, StatusBar, StyleSheet, View} from 'react-native';
-import {NavigationContainer} from '@react-navigation/native';
+import {createNavigationContainerRef, NavigationContainer} from '@react-navigation/native';
 import {SafeAreaProvider, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {AuthProvider, useAuth} from './src/context/AuthContext';
 import {linking} from './src/navigation/linking';
 import {RootNavigator} from './src/navigation/RootNavigator';
+import {RootStackParamList} from './src/navigation/types';
 import {colors} from './src/theme/colors';
 
 const MIN_SPLASH_MS = 4000;
+const navigationRef = createNavigationContainerRef<RootStackParamList>();
+const SIGNED_IN_ROUTES = new Set(['CustomerApp', 'StaffApp', 'ProfileDetail']);
 
 function useSplashDone() {
   const {ready} = useAuth();
@@ -20,6 +23,20 @@ function useSplashDone() {
 }
 
 function Gate({splashDone}: {splashDone: boolean}) {
+  const {authenticated} = useAuth();
+
+  // If the session ends while inside the portal (e.g. refresh token expired), go back to Home.
+  useEffect(() => {
+    if (authenticated || !navigationRef.isReady()) {
+      return;
+    }
+    const current = navigationRef.getCurrentRoute()?.name;
+    const inPortal = navigationRef.getRootState()?.routes.some(route => SIGNED_IN_ROUTES.has(route.name));
+    if (inPortal || (current && SIGNED_IN_ROUTES.has(current))) {
+      navigationRef.reset({index: 0, routes: [{name: 'Home'}]});
+    }
+  }, [authenticated]);
+
   if (!splashDone) {
     return (
       <View style={styles.boot}>
@@ -29,7 +46,7 @@ function Gate({splashDone}: {splashDone: boolean}) {
     );
   }
   return (
-    <NavigationContainer linking={linking}>
+    <NavigationContainer ref={navigationRef} linking={linking}>
       <RootNavigator />
     </NavigationContainer>
   );

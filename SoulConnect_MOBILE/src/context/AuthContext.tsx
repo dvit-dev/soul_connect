@@ -1,5 +1,6 @@
 import React, {createContext, useCallback, useContext, useEffect, useMemo, useState} from 'react';
-import {fetchProfile, refreshAuthToken} from '../services/api';
+import {AppState} from 'react-native';
+import {fetchProfile, logoutSession, refreshAuthToken} from '../services/api';
 import {decodeJwt, isStaffRole, primaryRole, rolesFromToken, tokenExpired} from '../services/pkce';
 import {clearSession, storageGet, storageKeys, storageSet} from '../services/storage';
 import {UserProfile} from '../types/profile';
@@ -72,6 +73,18 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
   );
 
   const signOut = useCallback(async () => {
+    // Revoke the session on the server first (best effort — never blocks logout).
+    try {
+      const [access, refresh] = await Promise.all([
+        storageGet(storageKeys.accessToken),
+        storageGet(storageKeys.refreshToken),
+      ]);
+      if (access || refresh) {
+        await logoutSession(access, refresh);
+      }
+    } catch {
+      // Offline or server error: still log out locally.
+    }
     setToken(null);
     setRoles([]);
     setProfile(null);
@@ -121,6 +134,50 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       cancelled = true;
     };
   }, [applyToken, loadProfile]);
+
+  // Keep the access token fresh: refresh shortly before it expires, and again
+  // whenever the app returns to the foreground (timers don't run in background).
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+    let cancelled = false;
+    const refreshNow = async () => {
+      const refresh = await storageGet(storageKeys.refreshToken);
+      if (!refresh || cancelled) {
+        return;
+      }
+      try {
+        const next = await refreshAuthToken(refresh);
+        if (!cancelled) {
+          await applyToken(next.access_token, next.refresh_token || refresh, next.id_token);
+        }
+      } catch (error: any) {
+        // Refresh token rejected → session is over. Network errors: keep the session and retry later.
+        if (!cancelled && !/network/i.test(String(error?.message))) {
+          await clearSession();
+          setToken(null);
+          setRoles([]);
+          setProfile(null);
+        }
+      }
+    };
+    const exp = Number(decodeJwt(token)?.exp || 0) * 1000;
+    const delay = exp ? Math.max(exp - Date.now() - 60_000, 5_000) : 0;
+    const timer = delay ? setTimeout(refreshNow, delay) : undefined;
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active' && tokenExpired(token, 60)) {
+        refreshNow();
+      }
+    });
+    return () => {
+      cancelled = true;
+      if (timer) {
+        clearTimeout(timer);
+      }
+      sub.remove();
+    };
+  }, [token, applyToken]);
 
   const role = primaryRole(
     roles.length ? roles : profile?.role ? [String(profile.role)] : [],
