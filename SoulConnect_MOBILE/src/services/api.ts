@@ -222,6 +222,43 @@ export async function exchangeAuthCode(code: string, verifier: string, redirectU
   return data as {access_token: string; refresh_token: string; id_token?: string};
 }
 
+export async function loginWithPassword(username: string, password: string) {
+  const body = new URLSearchParams({
+    grant_type: 'password',
+    client_id: KEYCLOAK_CLIENT_ID,
+    username,
+    password,
+    scope: 'openid profile email',
+  });
+  let response: Response;
+  try {
+    response = await fetch(`${keycloakBase}/token`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body: body.toString(),
+    });
+  } catch {
+    throw new Error('Network error. Check your connection and try again.');
+  }
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    if (data.error === 'invalid_grant') {
+      const desc = String(data.error_description || '');
+      if (/not fully set up|disabled|verify/i.test(desc)) {
+        throw new Error('Your account is not active yet. Please contact support.');
+      }
+      throw new Error('Incorrect email or password.');
+    }
+    throw new Error(data.error_description || data.error || 'Sign-in failed');
+  }
+  return data as {access_token: string; refresh_token: string; id_token?: string};
+}
+
+export function forgotPasswordUrl(): string {
+  const params = new URLSearchParams({client_id: KEYCLOAK_CLIENT_ID});
+  return `${keycloakBase.replace('/protocol/openid-connect', '')}/login-actions/reset-credentials?${params.toString()}`;
+}
+
 export async function refreshAuthToken(refreshToken: string) {
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
