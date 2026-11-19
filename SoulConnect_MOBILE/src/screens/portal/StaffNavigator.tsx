@@ -6,6 +6,7 @@ import {useAuth} from '../../context/AuthContext';
 import {resetToHome} from '../../navigation/resetToHome';
 import {StaffStackParamList} from '../../navigation/types';
 import {displayName} from '../../services/api';
+import {confirmLogout} from '../../services/confirmLogout';
 import {colors} from '../../theme/colors';
 import {MenuRow} from './CustomerTabs';
 import {DashboardScreen} from './DashboardScreen';
@@ -31,10 +32,12 @@ function StaffMenuScreen({navigation}: NativeStackScreenProps<StaffStackParamLis
       <Button
         label="Log out"
         variant="outline"
-        onPress={async () => {
-          await signOut();
-          resetToHome(navigation);
-        }}
+        onPress={() =>
+          confirmLogout(async () => {
+            await signOut();
+            resetToHome(navigation);
+          })
+        }
       />
     </ScrollView>
   );

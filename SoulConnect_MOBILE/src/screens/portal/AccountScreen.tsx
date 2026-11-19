@@ -5,6 +5,7 @@ import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {useAuth} from '../../context/AuthContext';
 import {resetToHome} from '../../navigation/resetToHome';
 import {CustomerTabParamList, RootStackParamList} from '../../navigation/types';
+import {confirmLogout} from '../../services/confirmLogout';
 import {CustomerProfileView} from './CustomerProfileView';
 
 type Props = CompositeScreenProps<
@@ -22,10 +23,12 @@ export function AccountScreen({navigation}: Props) {
       loading={loadingProfile}
       error={profileError}
       onSaved={refreshProfile}
-      onLogout={async () => {
-        await signOut();
-        resetToHome(navigation);
-      }}
+      onLogout={() =>
+        confirmLogout(async () => {
+          await signOut();
+          resetToHome(navigation);
+        })
+      }
     />
   );
 }
