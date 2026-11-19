@@ -8,4 +8,11 @@
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
+    <!-- Launch theme: full-screen splash image shown until React Native renders. -->
+    <style name="AppTheme.Launch" parent="AppTheme">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
 </resources>

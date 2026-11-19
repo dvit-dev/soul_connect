@@ -1,0 +1,12 @@
+<resources>
+
+    <!-- Android 12+ always shows a system splash (app icon on a solid color)
+         before the app's own window; match it to the splash image. -->
+    <style name="AppTheme.Launch" parent="AppTheme">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+</resources>
