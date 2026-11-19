@@ -7,6 +7,7 @@ import {useAuth} from '../../context/AuthContext';
 import {CustomerTabParamList, RootStackParamList} from '../../navigation/types';
 import {approvalStatus, displayName, fetchCustomerList, oppositeGender, photoUrl, sendInterest} from '../../services/api';
 import {colors, radii} from '../../theme/colors';
+import {centered, maxWidths, useResponsive} from '../../theme/responsive';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<CustomerTabParamList, 'Discover'>,
@@ -22,6 +23,8 @@ export function DiscoverScreen({navigation}: Props) {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const r = useResponsive();
+  const columns = r.columns(300, 3, Math.min(r.width, maxWidths.wide));
 
   const load = useCallback(
     async (nextSkip: number, replace: boolean) => {
@@ -68,7 +71,7 @@ export function DiscoverScreen({navigation}: Props) {
 
   if (profile && profile.public_verify !== true) {
     return (
-      <View style={styles.pending}>
+      <View style={[styles.pending, centered(maxWidths.reading)]}>
         <Text style={styles.title}>Profile verification pending</Text>
         <Text style={styles.body}>
           Every profile is reviewed before it can browse matches. Complete identity, family photo,
@@ -83,9 +86,13 @@ export function DiscoverScreen({navigation}: Props) {
 
   return (
     <FlatList
+      key={`cols-${columns}`}
+      numColumns={columns}
+      columnWrapperStyle={columns > 1 ? styles.row : undefined}
+      style={styles.listBg}
       data={rows}
       keyExtractor={(item, index) => String(item._id || item.customer_id || index)}
-      contentContainerStyle={styles.list}
+      contentContainerStyle={[styles.list, {padding: r.gutter}, centered(maxWidths.wide)]}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -106,8 +113,8 @@ export function DiscoverScreen({navigation}: Props) {
         const id = String(item._id || item.id || item.customer_id);
         const image = photoUrl(item);
         return (
-          <Pressable style={styles.card} onPress={() => navigation.navigate('ProfileDetail', {id})}>
-            {image ? <Image source={{uri: image}} style={styles.photo} /> : <View style={styles.photo} />}
+          <Pressable style={[styles.card, columns > 1 && styles.cardInGrid]} onPress={() => navigation.navigate('ProfileDetail', {id})}>
+            {image ? <Image source={{uri: image}} style={[styles.photo, {height: columns > 1 ? 260 : 220}]} /> : <View style={[styles.photo, {height: columns > 1 ? 260 : 220}]} />}
             <View style={styles.meta}>
               <Text style={styles.name}>{displayName(item)}</Text>
               <Text style={styles.muted}>
@@ -144,8 +151,11 @@ export function DiscoverScreen({navigation}: Props) {
 
 const styles = StyleSheet.create({
   center: {flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface},
-  list: {padding: 16, backgroundColor: colors.surface},
+  listBg: {backgroundColor: colors.surface},
+  list: {padding: 16},
+  row: {gap: 12},
   card: {backgroundColor: colors.white, borderRadius: radii.md, marginBottom: 12, overflow: 'hidden'},
+  cardInGrid: {flex: 1, maxWidth: '100%'},
   photo: {height: 220, backgroundColor: colors.plumLight},
   meta: {padding: 14},
   name: {fontSize: 18, fontWeight: '700', color: colors.ink},

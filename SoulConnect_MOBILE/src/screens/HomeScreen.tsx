@@ -2,10 +2,12 @@ import React, {useEffect, useState} from 'react';
 import {Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {Button} from '../components/ui/Button';
+import {Grid} from '../components/ui/Grid';
 import {Screen} from '../components/ui/Screen';
 import {fetchSubscriptions, isFreePrice, mapPlans, PlanCard} from '../services/api';
 import {RootStackParamList} from '../navigation/types';
 import {colors, radii} from '../theme/colors';
+import {centered, maxWidths, useResponsive} from '../theme/responsive';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -25,6 +27,10 @@ const STATS = [
 
 export function HomeScreen({navigation}: Props) {
   const [plans, setPlans] = useState<PlanCard[]>([]);
+  const r = useResponsive();
+  const statColumns = r.isCompact ? 2 : 4;
+  const cardColumns = r.isCompact ? 1 : 2;
+  const planColumns = r.sizeClass === 'expanded' ? 3 : r.isCompact ? 1 : 2;
 
   useEffect(() => {
     fetchSubscriptions()
@@ -34,61 +40,70 @@ export function HomeScreen({navigation}: Props) {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, {padding: r.gutter}, centered(maxWidths.wide)]}>
         <Text style={styles.brand}>
           Soul<Text style={styles.brandAccent}>Connect</Text>
         </Text>
         <View style={styles.badge}>
           <Text style={styles.badgeText}>Tamil Nadu's psychology-based matrimony</Text>
         </View>
-        <Text style={styles.title}>
+        <View style={!r.isCompact && styles.heroWide}>
+        <Text style={[styles.title, {fontSize: r.font(34), lineHeight: r.font(40)}]}>
           Find your <Text style={styles.em}>soulmate</Text> across Tamil Nadu
         </Text>
-        <Text style={styles.sub}>
+        <Text style={[styles.sub, {fontSize: r.font(16)}]}>
           Deep compatibility matching powered by psychology — not just horoscopes and biodata.
           All 38 districts, every community, every dream.
         </Text>
         <Text style={styles.tamil}>அனைத்து 38 மாவட்டங்களிலும் உங்கள் வாழ்க்கை துணையை கண்டுபிடியுங்கள்</Text>
-        <Button label="Register" onPress={() => navigation.navigate('Register')} />
-        <Button
-          label="Sign in"
-          variant="outline"
-          onPress={() => navigation.navigate('Login')}
-          style={styles.gap}
-        />
+        <View style={!r.isCompact && styles.ctaRow}>
+          <Button label="Register" onPress={() => navigation.navigate('Register')} style={!r.isCompact ? styles.ctaBtn : undefined} />
+          <Button
+            label="Sign in"
+            variant="outline"
+            onPress={() => navigation.navigate('Login')}
+            style={r.isCompact ? styles.gap : styles.ctaBtn}
+          />
+        </View>
+        </View>
 
-        <View style={styles.stats}>
+        <Grid columns={statColumns} style={styles.stats}>
           {STATS.map(stat => (
             <View key={stat.label} style={styles.stat}>
               <Text style={styles.statNum}>{stat.num}</Text>
               <Text style={styles.statLabel}>{stat.label}</Text>
             </View>
           ))}
-        </View>
+        </Grid>
 
         <Text style={styles.eyebrow}>How it works</Text>
         <Text style={styles.sectionTitle}>Four steps to finding your person</Text>
-        {STEPS.map(step => (
-          <View key={step.n} style={styles.card}>
-            <Text style={styles.step}>{step.n}</Text>
-            <Text style={styles.cardTitle}>{step.title}</Text>
-            <Text style={styles.cardBody}>{step.body}</Text>
-          </View>
-        ))}
+        <Grid columns={cardColumns}>
+          {STEPS.map(step => (
+            <View key={step.n} style={[styles.card, styles.cell]}>
+              <Text style={styles.step}>{step.n}</Text>
+              <Text style={styles.cardTitle}>{step.title}</Text>
+              <Text style={styles.cardBody}>{step.body}</Text>
+            </View>
+          ))}
+        </Grid>
 
         <Text style={styles.eyebrow}>Membership plans</Text>
         <Text style={styles.sectionTitle}>A plan for every family's journey</Text>
+        <Grid columns={planColumns}>
         {plans.map(plan => (
-          <View key={plan.id} style={[styles.card, plan.isPopular && styles.featured]}>
+          <View key={plan.id} style={[styles.card, styles.cell, plan.isPopular && styles.featured]}>
             {plan.isPopular ? <Text style={styles.popular}>Most popular</Text> : null}
             <Text style={styles.price}>{plan.price}</Text>
             <Text style={styles.cardTitle}>{plan.name}</Text>
             <Text style={styles.cardBody}>{plan.sub}</Text>
-            {plan.features.map(feature => (
-              <Text key={feature} style={styles.feature}>
-                ✓  {feature}
-              </Text>
-            ))}
+            <View style={styles.features}>
+              {plan.features.map(feature => (
+                <Text key={feature} style={styles.feature}>
+                  ✓  {feature}
+                </Text>
+              ))}
+            </View>
             <Button
               label={isFreePrice(plan.price) ? 'Start free' : 'Choose plan'}
               onPress={() => navigation.navigate('Register')}
@@ -96,8 +111,9 @@ export function HomeScreen({navigation}: Props) {
             />
           </View>
         ))}
+        </Grid>
 
-        <View style={styles.cta}>
+        <View style={[styles.cta, !r.isCompact && styles.ctaWide]}>
           <Text style={styles.ctaTitle}>Ready to meet your soulmate?</Text>
           <Text style={styles.ctaBody}>
             Join families finding verified, compatible matches on Tamil Nadu's matrimony platform.
@@ -143,8 +159,13 @@ const styles = StyleSheet.create({
   sub: {marginTop: 12, color: colors.ink60, fontSize: 16, lineHeight: 24},
   tamil: {marginTop: 8, marginBottom: 20, color: colors.ink40, fontSize: 14, lineHeight: 22},
   gap: {marginTop: 10},
-  stats: {flexDirection: 'row', flexWrap: 'wrap', marginTop: 28, gap: 12},
-  stat: {width: '47%', backgroundColor: colors.white, borderRadius: radii.md, padding: 14},
+  heroWide: {maxWidth: maxWidths.reading},
+  ctaRow: {flexDirection: 'row', gap: 12},
+  ctaBtn: {minWidth: 180},
+  stats: {marginTop: 28},
+  stat: {flex: 1, backgroundColor: colors.white, borderRadius: radii.md, padding: 14},
+  cell: {flex: 1, marginBottom: 0},
+  features: {flexGrow: 1},
   statNum: {fontSize: 22, fontWeight: '700', color: colors.ink},
   statLabel: {color: colors.ink40, fontSize: 12, marginTop: 4},
   eyebrow: {
@@ -172,6 +193,7 @@ const styles = StyleSheet.create({
   price: {fontSize: 28, fontWeight: '800', color: colors.ink, marginBottom: 4},
   feature: {color: colors.ink80, marginTop: 6},
   cta: {marginTop: 20, backgroundColor: colors.ink, borderRadius: radii.lg, padding: 20},
+  ctaWide: {padding: 32, alignItems: 'flex-start'},
   ctaTitle: {color: colors.white, fontSize: 24, fontWeight: '800'},
   ctaBody: {color: '#D6D0E4', marginVertical: 12, lineHeight: 22},
   links: {flexDirection: 'row', flexWrap: 'wrap', marginTop: 24},

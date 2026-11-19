@@ -11,6 +11,7 @@ import {
   mapPlans,
 } from '../../services/api';
 import {colors, radii} from '../../theme/colors';
+import {centered, maxWidths, useResponsive} from '../../theme/responsive';
 
 type Kind = 'customers' | 'users' | 'transactions' | 'subscriptions' | 'payments';
 
@@ -23,6 +24,7 @@ export function RecordListScreen({kind}: {kind: Kind}) {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const r = useResponsive();
 
   const load = useCallback(
     async (nextSkip: number, replace: boolean) => {
@@ -85,7 +87,8 @@ export function RecordListScreen({kind}: {kind: Kind}) {
     <FlatList
       data={rows}
       keyExtractor={(item, index) => String(item.id || item._id || item.customer_id || index)}
-      contentContainerStyle={styles.list}
+      style={styles.listBg}
+      contentContainerStyle={[styles.list, {padding: r.gutter}, centered(maxWidths.reading)]}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(0, true); }} />
       }
@@ -109,7 +112,8 @@ export function RecordListScreen({kind}: {kind: Kind}) {
 
 const styles = StyleSheet.create({
   center: {flex: 1, alignItems: 'center', justifyContent: 'center'},
-  list: {padding: 16, backgroundColor: colors.surface, flexGrow: 1},
+  listBg: {backgroundColor: colors.surface},
+  list: {padding: 16, flexGrow: 1},
   card: {backgroundColor: colors.white, borderRadius: radii.md, padding: 14, marginBottom: 10},
   title: {fontSize: 16, fontWeight: '700', color: colors.ink},
   meta: {color: colors.ink40, marginTop: 4},

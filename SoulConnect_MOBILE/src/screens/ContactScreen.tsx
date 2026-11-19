@@ -3,11 +3,13 @@ import {Linking, ScrollView, StyleSheet, Text, View} from 'react-native';
 import {Button} from '../components/ui/Button';
 import {Screen} from '../components/ui/Screen';
 import {colors, radii} from '../theme/colors';
+import {centered, maxWidths, useResponsive} from '../theme/responsive';
 
 export function ContactScreen() {
+  const r = useResponsive();
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, {padding: r.gutter}, centered(maxWidths.reading)]}>
         <Text style={styles.kicker}>Support · 7 days a week</Text>
         <Text style={styles.title}>Let’s connect</Text>
         <Text style={styles.body}>

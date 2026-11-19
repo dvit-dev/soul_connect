@@ -8,6 +8,7 @@ import {StaffStackParamList} from '../../navigation/types';
 import {displayName} from '../../services/api';
 import {confirmLogout} from '../../services/confirmLogout';
 import {colors} from '../../theme/colors';
+import {centered, maxWidths, useResponsive} from '../../theme/responsive';
 import {MenuRow} from './CustomerTabs';
 import {DashboardScreen} from './DashboardScreen';
 import {RecordListScreen} from './RecordListScreen';
@@ -17,8 +18,9 @@ const Stack = createNativeStackNavigator<StaffStackParamList>();
 function StaffMenuScreen({navigation}: NativeStackScreenProps<StaffStackParamList, 'StaffMenu'>) {
   const {profile, role, signOut} = useAuth();
   const manager = role === 'manager_g' || profile?.role === 'manager_g';
+  const r = useResponsive();
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <ScrollView contentContainerStyle={[styles.content, {padding: r.gutter}, centered(maxWidths.reading)]}>
       <Text style={styles.title}>{displayName(profile || {})}</Text>
       <Text style={styles.role}>{role.replace(/_g/g, '')}</Text>
       <MenuRow label="Dashboard" detail="Profiles, plans, and districts" onPress={() => navigation.navigate('Dashboard')} />

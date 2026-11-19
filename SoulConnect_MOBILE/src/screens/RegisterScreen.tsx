@@ -14,6 +14,7 @@ import {
   rememberPendingRegistration,
 } from '../services/registration';
 import {colors} from '../theme/colors';
+import {centered, maxWidths} from '../theme/responsive';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Register'>;
 
@@ -168,7 +169,7 @@ export function RegisterScreen({navigation}: Props) {
   return (
     <Screen backgroundColor={colors.ink}>
       <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={step === 2 ? styles.stepTwoContent : styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView style={styles.fill} contentContainerStyle={step === 2 ? [styles.stepTwoContent, centered(maxWidths.reading)] : styles.content} keyboardShouldPersistTaps="handled">
           {step === 1 ? (
             <RegisterStepOne
               values={formik.values}

@@ -7,6 +7,7 @@ import {useAuth} from '../../context/AuthContext';
 import {CustomerTabParamList, RootStackParamList} from '../../navigation/types';
 import {displayName, fetchInterested} from '../../services/api';
 import {colors, radii} from '../../theme/colors';
+import {centered, maxWidths, useResponsive} from '../../theme/responsive';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<CustomerTabParamList, 'Interested'>,
@@ -19,6 +20,7 @@ export function InterestedScreen({navigation}: Props) {
   const [sent, setSent] = useState<any[]>([]);
   const [received, setReceived] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const r = useResponsive();
 
   const load = useCallback(async () => {
     if (!token || !profile) {
@@ -44,7 +46,7 @@ export function InterestedScreen({navigation}: Props) {
 
   return (
     <View style={styles.fill}>
-      <View style={styles.tabs}>
+      <View style={[styles.tabs, {paddingHorizontal: r.gutter}, centered(maxWidths.reading)]}>
         <Tab label="Sent" active={tab === 'sent'} onPress={() => setTab('sent')} />
         <Tab label="Received" active={tab === 'received'} onPress={() => setTab('received')} />
       </View>
@@ -54,7 +56,7 @@ export function InterestedScreen({navigation}: Props) {
         <FlatList
           data={data}
           keyExtractor={(item, index) => String(item._id || item.customer_id || index)}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={[styles.list, {paddingHorizontal: r.gutter}, centered(maxWidths.reading)]}
           ListEmptyComponent={<Text style={styles.empty}>No interests in this list yet.</Text>}
           renderItem={({item}) => {
             const person = item.customer || item.profile || item;

@@ -10,6 +10,7 @@ import {completePaidRegistration} from '../services/registration';
 import {queryParam} from '../services/query';
 import {storageKeys, storageRemove} from '../services/storage';
 import {colors} from '../theme/colors';
+import {centered, maxWidths} from '../theme/responsive';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Payment'>;
 
@@ -80,7 +81,7 @@ export function PaymentScreen({route, navigation}: Props) {
   if (phase !== 'gateway') {
     return (
       <Screen>
-        <View style={styles.result}>
+        <View style={[styles.result, centered(maxWidths.form)]}>
           {phase === 'working' ? <ActivityIndicator color={colors.plum} /> : null}
           <Text style={styles.title}>{phase === 'done' ? 'Payment received' : phase === 'failed' ? 'Payment needs attention' : 'Creating your profile'}</Text>
           <Text style={styles.body}>{message}</Text>

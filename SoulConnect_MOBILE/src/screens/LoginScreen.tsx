@@ -19,6 +19,7 @@ import {RootStackParamList} from '../navigation/types';
 import {forgotPasswordUrl, loginWithPassword} from '../services/api';
 import {isStaffRole, primaryRole, rolesFromToken} from '../services/pkce';
 import {colors, radii} from '../theme/colors';
+import {centered, maxWidths, useResponsive} from '../theme/responsive';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -34,6 +35,7 @@ export function LoginScreen({navigation}: Props) {
   const [working, setWorking] = useState(false);
   const [focused, setFocused] = useState<'email' | 'password' | null>(null);
   const passwordRef = useRef<TextInput>(null);
+  const r = useResponsive();
 
   const validate = () => {
     const next: {email?: string; password?: string} = {};
@@ -78,7 +80,7 @@ export function LoginScreen({navigation}: Props) {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
       <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, {paddingHorizontal: r.gutter}, centered(maxWidths.form), !r.isCompact && styles.contentCentered]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <Pressable
@@ -203,6 +205,7 @@ const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: colors.surface},
   fill: {flex: 1},
   content: {flexGrow: 1, paddingHorizontal: 22, paddingBottom: 28},
+  contentCentered: {justifyContent: 'center'},
   back: {alignSelf: 'flex-start', paddingVertical: 12},
   backText: {color: colors.ink60, fontSize: 15, fontWeight: '600'},
   logoCard: {

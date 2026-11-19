@@ -652,7 +652,7 @@ const styles = StyleSheet.create({
   heroBtn: {backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.35)', borderRadius: radii.pill, paddingHorizontal: 12, paddingVertical: 8, marginLeft: 8},
   heroSave: {backgroundColor: colors.sage, borderColor: colors.sage},
   heroBtnText: {color: colors.white, fontWeight: '800', fontSize: 12},
-  layout: {marginTop: -48, paddingHorizontal: 16},
+  layout: {marginTop: -48, paddingHorizontal: 16, width: '100%', maxWidth: 760, alignSelf: 'center'},
   layoutWide: {flexDirection: 'row', alignItems: 'flex-start', maxWidth: 1100, alignSelf: 'center', width: '100%'},
   side: {width: 340, marginRight: 20},
   main: {flex: 1},
